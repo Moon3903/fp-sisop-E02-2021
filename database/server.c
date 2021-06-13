@@ -32,15 +32,17 @@ void file(char path[1000],char tofile[1000]){
     fclose(ptr);
 }
 
-void create(char *buffer,char *tipe){
-    char* token = strtok(buffer, ";");
-    token = strtok(buffer," ");
+int create(char *buffer,char *tipe){
+    char tempBuffer[1024] = {0};
+    strcpy(tempBuffer,buffer);
+   
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
     char input[10][1000];
     int i=0;
 
     if(strcmp(tipe,"root")){
-        printf("permission denied\n");
-        return;
+        return 0;
     }
 
     while (token != NULL) {
@@ -48,13 +50,8 @@ void create(char *buffer,char *tipe){
         token = strtok(NULL, " ");
     }
 
-    // for(int i = 0; i < 6; i++){
-    //     printf("%s\n",input[i]);
-    // }
-
-    if(!(!strcmp("IDENTIFIED",input[3]) && !strcmp("BY",input[4]))){
-        printf("syntax error\n");
-        return;
+    if(strcmp("IDENTIFIED",input[3]) || strcmp("BY",input[4]) || buffer[strlen(buffer)-1] != ';'){
+        return -1;
     }
 
     char tmp[1000];
@@ -62,6 +59,7 @@ void create(char *buffer,char *tipe){
     strcat(tmp," ");
     strcat(tmp,input[5]);
     file(user,tmp);
+    return 1;
 }
 
 int login(char* tipe){
@@ -105,7 +103,7 @@ void *play(void *arg){
         int masuk = login(tipe);
         if(masuk == 0){
             printf("login gagal\n");
-            close(new_socket);
+            close(*new_socket);
             return;
         }
         printf("berhasil login\n");
@@ -124,11 +122,21 @@ void *play(void *arg){
 
         if(!strncmp(buffer,"CREATE USER",11)){
             printf("masuk\n");
-            create(buffer,tipe);
+            int status = create(buffer,tipe);
+            if(status == -1){
+                char *message = "syntax error";
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == 0){
+                char *message = "permission denied";
+                send(*new_socket , message , strlen(message) , 0 );
+            }else{
+                char *message = "ok";
+                send(*new_socket , message , strlen(message) , 0 );
+            }
+
         }      
 
-        send(*new_socket , hello , strlen(hello) , 0 );
-        printf("Hello message sent\n");
+        
     }
 }
 

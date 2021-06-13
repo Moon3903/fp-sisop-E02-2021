@@ -5,8 +5,17 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 #define PORT 8080
-  
+
+bool checkClose(int valread, int sock){
+    if(valread == 0){
+        close(sock);
+        return 1;
+    }
+    return 0;
+}
+
 int main(int argc, char const *argv[]) {
 
     if(getuid()){
@@ -61,6 +70,9 @@ int main(int argc, char const *argv[]) {
         send(sock , message , strlen(message) , 0 );
         // printf("Hello message sent\n");
         valread = recv( sock , buffer, 1024,0);
+        if(checkClose(valread, sock)){
+            break;
+        }
         printf("%s\n",buffer );
     }
     return 0;
