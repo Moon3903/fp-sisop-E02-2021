@@ -7,12 +7,16 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #define PORT 8080
 #define MAX_CLIENTS 1000
 
 pthread_t tid[MAX_CLIENTS];
 
-char *user = "user.txt";
+char *user = "administrator/user.txt";
 
 bool checkClose(int valread, int *new_socket){
     if(valread == 0){
@@ -29,7 +33,8 @@ void file(char path[1000],char tofile[1000]){
 }
 
 void create(char *buffer,char *tipe){
-    char* token = strtok(buffer, " ");
+    char* token = strtok(buffer, ";");
+    token = strtok(buffer," ");
     char input[10][1000];
     int i=0;
 
@@ -42,6 +47,10 @@ void create(char *buffer,char *tipe){
         strcpy(input[i++],token);
         token = strtok(NULL, " ");
     }
+
+    // for(int i = 0; i < 6; i++){
+    //     printf("%s\n",input[i]);
+    // }
 
     if(!(!strcmp("IDENTIFIED",input[3]) && !strcmp("BY",input[4]))){
         printf("syntax error\n");
@@ -106,11 +115,17 @@ void *play(void *arg){
         char *hello = "Hello from server";
 
         valread = recv( *new_socket , buffer, 1024, 0);
+        printf("%s\n", buffer);
+
+        if(checkClose(valread,new_socket)){
+            printf("Koneksi terputus\n");
+            break;
+        }
+
         if(!strncmp(buffer,"CREATE USER",11)){
             printf("masuk\n");
             create(buffer,tipe);
-        }
-        printf("%s\n",buffer );
+        }      
 
         send(*new_socket , hello , strlen(hello) , 0 );
         printf("Hello message sent\n");
@@ -118,6 +133,7 @@ void *play(void *arg){
 }
 
 int main(int argc, char const *argv[]) {
+    mkdir("administrator",0777);
     int server_fd, new_socket[MAX_CLIENTS];
     struct sockaddr_in address;
     int opt = 1;

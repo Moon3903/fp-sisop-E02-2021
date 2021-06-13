@@ -59,7 +59,7 @@ int main(int argc, char const *argv[]) {
         char message[1000] ={0};
         gets(message);
         send(sock , message , strlen(message) , 0 );
-        printf("Hello message sent\n");
+        // printf("Hello message sent\n");
         valread = recv( sock , buffer, 1024,0);
         printf("%s\n",buffer );
     }
