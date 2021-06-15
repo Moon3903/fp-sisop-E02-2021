@@ -16,7 +16,9 @@
 
 pthread_t tid[MAX_CLIENTS];
 
-char *user = "administrator/user.txt";
+char *user_table = "administrator/user.txt";
+char *permission_table = "administrator/permission.txt";
+
 
 bool checkClose(int valread, int *new_socket){
     if(valread == 0){
@@ -32,7 +34,7 @@ void file(char path[1000],char tofile[1000]){
     fclose(ptr);
 }
 
-int create(char *buffer,char *tipe){
+int create_user(char *buffer,char *tipe){
     char tempBuffer[1024] = {0};
     strcpy(tempBuffer,buffer);
    
@@ -58,14 +60,88 @@ int create(char *buffer,char *tipe){
     strcpy(tmp,input[2]);
     strcat(tmp," ");
     strcat(tmp,input[5]);
-    file(user,tmp);
+    file(user_table,tmp);
     return 1;
 }
 
-int login(char* tipe){
+int use(char *buffer, char *tipe, char *login_user, char *use_database){
+    char tempBuffer[1024] = {0}, database[100] = {0};
+    strcpy(tempBuffer,buffer);
+    
+    
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
+    token = strtok(NULL," ");
+    
+    if(token != NULL){
+        strcpy(database,token);
+    }else{
+        return -1;
+    }
+
+    if(!strcmp(tipe,"root")){
+        strcpy(use_database, database);
+        return 1;
+    }
+
+
+    FILE *filein;
+    filein = fopen(permission_table,"r");
+
+
+    char tmpdatabase[1000],tmpuser[1000];
+    bool ada = false;
+    if(filein){
+        while(fscanf(filein,"%s %s",tmpdatabase,tmpuser) != EOF){
+            if(!strcmp(tmpdatabase,database)){
+                ada = true;
+                if(!strcmp(tmpuser,login_user)){
+                    fclose(filein);
+                    strcpy(use_database, database);
+                    return 1;
+                }
+            }
+        }
+    }
+    if(!ada){
+        return -2;
+    }
+    return 0;
+}
+
+int create_database(char *buffer, char *tipe, char *login_user){
+    char tempBuffer[1024] = {0}, database[100] = {0};
+    strcpy(tempBuffer,buffer);
+    
+    
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
+    token = strtok(NULL," ");
+    token = strtok(NULL," ");
+
+    if(token != NULL){
+        strcpy(database,token);
+    }else{
+        return -1;
+    }
+
+    if(mkdir(database,0777) == 0){
+        char record[1000] = {0};
+        sprintf(record,"%s %s", database, login_user);
+        file(permission_table,record);      
+        return 1;
+    }else{
+        return 0;
+    }
+
+}
+
+
+
+int login(char* tipe, char *login_user){
    
     FILE *filein;
-    filein = fopen(user,"r");
+    filein = fopen(user_table,"r");
     printf("%s\n",tipe);
     char user[1000],pass[1000];
 
@@ -75,15 +151,17 @@ int login(char* tipe){
     strcpy(pass,token);
 
     char tmpuser[1000],tmppass[1000];
-
-    while(fscanf(filein,"%s %s",tmpuser,tmppass) != EOF){
-        if(!strcmp(tmpuser,user) && !strcmp(tmppass,pass)){
-            fclose(filein);
-            return 1;
+    if(filein){
+        while(fscanf(filein,"%s %s",tmpuser,tmppass) != EOF){
+            if(!strcmp(tmpuser,user) && !strcmp(tmppass,pass)){
+                fclose(filein);
+                strcpy(login_user,user);
+                return 1;
+            }
         }
+        fclose(filein);
     }
-    printf("HADE\n");
-    fclose(filein);
+
     return 0;
     
 }
@@ -93,23 +171,27 @@ void *play(void *arg){
     int valread;
     char tipe[1024] = {0};
     valread = recv( *new_socket , tipe, 1024, 0);
+    char login_user[100] = {0}, use_database[100]={0};
     printf("?\n");
     if(!strcmp(tipe,"root")){
         printf("ini root\n");
+        strcpy(login_user,"root");
     }
     else{
         //cek login
         printf("%s\n",tipe);
-        int masuk = login(tipe);
+        int masuk = login(tipe,login_user);
         if(masuk == 0){
             printf("login gagal\n");
             close(*new_socket);
             return;
         }
-        printf("berhasil login\n");
+
+        printf("berhasil login%s\n",login_user);
     }
     while(1){
         char buffer[1024] = {0};
+        char message[1024] = {0};
         char *hello = "Hello from server";
 
         valread = recv( *new_socket , buffer, 1024, 0);
@@ -122,18 +204,51 @@ void *play(void *arg){
 
         if(!strncmp(buffer,"CREATE USER",11)){
             printf("masuk\n");
-            int status = create(buffer,tipe);
+            int status = create_user(buffer,tipe);
             if(status == -1){
-                char *message = "syntax error";
+                strcpy(message,"syntax error");
                 send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 0){
-                char *message = "permission denied";
+                strcpy(message,"permission denied");
                 send(*new_socket , message , strlen(message) , 0 );
             }else{
-                char *message = "ok";
+                strcpy(message,"ok");
                 send(*new_socket , message , strlen(message) , 0 );
             }
+        }else if(!strncmp(buffer,"USE",3)){
+            int status = use(buffer,tipe,login_user,use_database);
+            if(status == -2){
+                strcpy(message,"unknown database");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == -1){
+                strcpy(message,"syntax error");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == 1){
+                sprintf(message,"database changed to %s",use_database);
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == 0){
+                strcpy(message,"permission denied");
+                send(*new_socket , message , strlen(message) , 0 );
+            }
+        }else if(!strncmp(buffer,"CREATE DATABASE",15)){
+            int status = create_database(buffer,tipe,login_user);
+            if(status == -1){
+                strcpy(message,"syntax error");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == 1){
+                strcpy(message,"permission denied");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == 0){
+                strcpy(message,"permission denied");
+                send(*new_socket , message , strlen(message) , 0 );
+            }
+        }
 
+
+
+        if(!strcmp(buffer,"STATUS")){
+            sprintf(message,"login_user:%s use_database:%s",login_user,use_database);
+            send(*new_socket , message , strlen(message) , 0 );
         }      
 
         
