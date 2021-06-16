@@ -289,70 +289,56 @@ void *play(void *arg){
             int status = create_user(buffer,tipe);
             if(status == -2){
                 strcpy(message,"user already exist");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == -1){
                 strcpy(message,"syntax error");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 0){
                 strcpy(message,"permission denied");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 1){
                 strcpy(message,"create user success");
-                send(*new_socket , message , strlen(message) , 0 );
             }
         }else if(!strncmp(buffer,"USE",3)){
             int status = use(buffer,tipe,login_user,use_database);
             if(status == -2){
                 strcpy(message,"unknown database");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == -1){
                 strcpy(message,"syntax error");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 1){
                 sprintf(message,"database changed to %s",use_database);
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 0){
                 strcpy(message,"permission denied");
-                send(*new_socket , message , strlen(message) , 0 );
             }
         }else if(!strncmp(buffer,"CREATE DATABASE",15)){
             int status = create_database(buffer,tipe,login_user);
             if(status == -1){
                 strcpy(message,"syntax error");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 1){
                 strcpy(message,"create success");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 0){
                 strcpy(message,"permission denied");
-                send(*new_socket , message , strlen(message) , 0 );
             }
         }else if(!strncmp(buffer,"GRANT PERMISSION",16)){
             int status = grant_pemission(buffer,tipe);
             if(status == -3){
                 strcpy(message,"unknown user");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == -2){
                 strcpy(message,"database not exist");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == -1){
                 strcpy(message,"syntax error");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 1){
                 strcpy(message,"grant permission success");
-                send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 0){
                 strcpy(message,"grant permission denied");
-                send(*new_socket , message , strlen(message) , 0 );
             }
+        }else{
+            strcpy(message,"syntax error");
         }
 
-
-
+        //debug user dan database yg digunakan
         if(!strcmp(buffer,"STATUS")){
             sprintf(message,"login_user:%s use_database:%s",login_user,use_database);
-            send(*new_socket , message , strlen(message) , 0 );
-        }      
+        } 
+
+        send(*new_socket , message , strlen(message) , 0 );
 
         
     }
