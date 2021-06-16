@@ -28,6 +28,40 @@ bool checkClose(int valread, int *new_socket){
     return 0;
 }
 
+bool check_database(char *database){
+    FILE *filein;
+    filein = fopen(permission_table,"r");
+
+
+    char tmpdatabase[1000],tmpuser[1000];
+
+    if(filein){
+        while(fscanf(filein,"%s %s",tmpdatabase,tmpuser) != EOF){
+            if(!strcmp(tmpdatabase,database)){
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+bool check_user(char *user){
+    FILE *filein;
+    filein = fopen(user_table,"r");
+
+
+    char tempuser[1000],tmppass[1000];
+
+    if(filein){
+        while(fscanf(filein,"%s %s",tempuser,tmppass) != EOF){
+            if(!strcmp(tempuser,user)){
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 void file(char path[1000],char tofile[1000]){
     FILE* ptr = fopen(path,"a");
     fprintf(ptr,"%s\n",tofile);
@@ -56,12 +90,20 @@ int create_user(char *buffer,char *tipe){
         return -1;
     }
 
-    char tmp[1000];
-    strcpy(tmp,input[2]);
-    strcat(tmp," ");
-    strcat(tmp,input[5]);
-    file(user_table,tmp);
-    return 1;
+    if(i < 6){
+        return -1;
+    }
+
+    if(!check_user(input[2]) && strcmp(input[2],"root") != 0){
+        char tmp[1000];
+        strcpy(tmp,input[2]);
+        strcat(tmp," ");
+        strcat(tmp,input[5]);
+        file(user_table,tmp);
+        return 1;
+    }else {
+        return -2;
+    }
 }
 
 int use(char *buffer, char *tipe, char *login_user, char *use_database){
@@ -136,6 +178,46 @@ int create_database(char *buffer, char *tipe, char *login_user){
 
 }
 
+int grant_pemission(char *buffer, char *tipe){
+    char tempBuffer[1024] = {0};
+    strcpy(tempBuffer,buffer);
+   
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
+    char input[10][1000];
+    int i=0;
+
+    if(strcmp(tipe,"root")){
+        return 0;
+    }
+
+    while (token != NULL) {
+        strcpy(input[i++],token);
+        token = strtok(NULL, " ");
+    }
+
+    if(strcmp("INTO",input[3]) || buffer[strlen(buffer)-1] != ';'){
+        return -1;
+    }
+
+    char tmp[1000] = {0};
+    if(i < 5){
+        return -1;
+    }
+    if(check_database(input[2])){
+        if(check_user(input[4])){
+            sprintf(tmp, "%s %s", input[2], input[4]);
+            
+            file(permission_table,tmp);
+            return 1;
+        }else{
+            return -3;
+        }
+    }else{
+        return -2;
+    }
+}
+
 
 
 int login(char* tipe, char *login_user){
@@ -205,14 +287,17 @@ void *play(void *arg){
         if(!strncmp(buffer,"CREATE USER",11)){
             printf("masuk\n");
             int status = create_user(buffer,tipe);
-            if(status == -1){
+            if(status == -2){
+                strcpy(message,"user already exist");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == -1){
                 strcpy(message,"syntax error");
                 send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 0){
                 strcpy(message,"permission denied");
                 send(*new_socket , message , strlen(message) , 0 );
-            }else{
-                strcpy(message,"ok");
+            }else if(status == 1){
+                strcpy(message,"create user success");
                 send(*new_socket , message , strlen(message) , 0 );
             }
         }else if(!strncmp(buffer,"USE",3)){
@@ -236,10 +321,28 @@ void *play(void *arg){
                 strcpy(message,"syntax error");
                 send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 1){
-                strcpy(message,"permission denied");
+                strcpy(message,"create success");
                 send(*new_socket , message , strlen(message) , 0 );
             }else if(status == 0){
                 strcpy(message,"permission denied");
+                send(*new_socket , message , strlen(message) , 0 );
+            }
+        }else if(!strncmp(buffer,"GRANT PERMISSION",16)){
+            int status = grant_pemission(buffer,tipe);
+            if(status == -3){
+                strcpy(message,"unknown user");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == -2){
+                strcpy(message,"database not exist");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == -1){
+                strcpy(message,"syntax error");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == 1){
+                strcpy(message,"grant permission success");
+                send(*new_socket , message , strlen(message) , 0 );
+            }else if(status == 0){
+                strcpy(message,"grant permission denied");
                 send(*new_socket , message , strlen(message) , 0 );
             }
         }

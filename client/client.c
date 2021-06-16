@@ -33,7 +33,6 @@ int main(int argc, char const *argv[]) {
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
 
-    char buffer[1024] = {0};
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
         return -1;
@@ -66,6 +65,7 @@ int main(int argc, char const *argv[]) {
     }
     while(1){
         char message[1000] ={0};
+        char buffer[1024] = {0};
         gets(message);
         send(sock , message , strlen(message) , 0 );
         // printf("Hello message sent\n");
