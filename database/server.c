@@ -383,6 +383,245 @@ int drop_database(char *buffer, char *tipe, char *login_user, char *use_database
     return 0;
 }
 
+int validasi(char *buffer){
+    char tmp[1000];
+    strcpy(tmp,buffer);
+    char g = '\'';
+
+    if(tmp[0]== g && tmp[strlen(tmp)-1] == g){
+        return 1;
+    }
+    for(int i = 0; i<strlen(tmp) ;i++){
+        if(tmp[i] < '0' || tmp[i] > '9'){
+            return 0;
+        }
+    }
+    return 2;
+}
+
+int insert(char *buffer, char *use_database){
+
+    if(!strlen(use_database)){
+        return -1;
+    }    
+
+    char tmp[1000];
+    strcpy(tmp,buffer);
+
+    char *token = strtok(tmp,"(");
+    token = strtok(NULL,"(");
+    printf("%s\n",token);
+    token = strtok(token,")");
+    printf("%s\n",token);
+    token = strtok(token,",");
+
+    char data[100][1000];
+
+    int i = 0;
+
+    while(token!=NULL){
+        strcpy(data[i],trim(token));
+        i++;
+        token = strtok(NULL,",");
+    }
+
+    FILE *filein,*fileout;
+
+    strcpy(tmp,buffer);
+    token = strtok(tmp," ");
+    token = strtok(NULL," ");
+    token = strtok(NULL," ");
+
+    char open[1000],append[1000];
+    strcpy(open,use_database);
+    strcat(open,"/struktur_");
+    strcat(open,token);
+    strcat(open,".txt");
+    filein = fopen(open,"r");
+
+    strcpy(append,use_database);
+    strcat(append,"/");
+    strcat(append,token);
+    strcat(append,".txt");
+    fileout = fopen(append,"a");
+
+    char data_type[100][1000];
+    char tmp_type[1000],ret[1000];
+    int k = 0;
+
+    printf("IN\n");
+    if(filein){
+        while(fscanf(filein,"%s %s",ret,tmp_type) != EOF){
+            strcpy(data_type[k],tmp_type);
+            k++;
+        }
+    }
+    else{
+        fclose(filein);
+        fclose(fileout);
+        return -2;
+    }
+
+    if(k != i){
+        fclose(filein);
+        fclose(fileout);
+        return -3;
+    }
+    printf("out\n");
+    for(int j=0;j<i;j++){
+        int val = validasi(data[j]);
+        printf("%s\n",data_type[j]);
+        if(val == 1 && !strcmp(data_type[j],"string")) ;
+        else if (val == 2 && !strcmp(data_type[j],"int")) ;
+        else {
+            fclose(filein);
+            fclose(fileout);
+            return -4;
+        }  
+    }
+    printf("sampe\n");
+    for(int j=0;j<i-1;j++){
+        fprintf(fileout,"%s,",data[j]);
+    }
+    fprintf(fileout,"%s\n",data[i-1]);
+    fclose(filein);
+    fclose(fileout);
+
+    return 1;
+}
+
+int drop_table(char *buffer, char *use_database){
+
+    if(!strlen(use_database)){
+        return -2;
+    }
+
+    FILE *filein;
+
+    char tmp[1000];
+    char *token;
+    strcpy(tmp,buffer);
+    token = strtok(tmp," ");
+    token = strtok(NULL," ");
+    token = strtok(NULL," ");
+
+    char open[1000],append[1000];
+    strcpy(open,use_database);
+    strcat(open,"/struktur_");
+    strcat(open,token);
+    strcat(open,".txt");
+    filein = fopen(open,"r");
+
+    strcpy(append,use_database);
+    strcat(append,"/");
+    strcat(append,token);
+    strcat(append,".txt");
+
+    if(filein){
+        fclose(filein);
+        remove(open);
+        remove(append);
+        return 1;
+    }
+    else{
+        return -1;
+    }
+}
+
+int drop_column(char *buffer, char *use_database){
+
+    if(!strlen(use_database)){
+        return -2;
+    }
+
+    char input[10][1000];
+    char tmp[10000];
+    strcpy(tmp,buffer);
+    int k = 0;
+    char *token;
+    token = strtok(tmp,";");
+    token = strtok(token," ");
+    while (token != NULL) {
+        strcpy(input[k++],token);
+        token = strtok(NULL, " ");
+    }
+
+    if(k != 5){
+        return -3;
+    }
+
+    FILE *strukturin,*strukturout
+        ,*tablein,*tableout;
+
+    char open[1000],append[1000],a[1000],b[1000];
+    strcpy(open,use_database);
+    strcat(open,"/struktur_");
+    strcat(open,input[4]);
+    strcpy(a,open);
+    strcat(a,"2.txt");
+    strcat(open,".txt");
+    strukturin = fopen(open,"r");
+    strukturout = fopen(a,"w");
+
+    strcpy(append,use_database);
+    strcat(append,"/");
+    strcat(append,input[4]);
+    strcpy(b,append);
+    strcat(b,"2.txt");
+    strcat(append,".txt");
+    tablein = fopen(append,"r");
+    tableout = fopen(b,"w");
+
+    int i = 0,j = 0;
+    char data_type[1000], name[1000];
+    printf("duh\n");
+    if(strukturin){
+        while(fscanf(strukturin,"%s %s",name,data_type) != EOF){
+            if(strcmp(input[2],name)){
+                fprintf(strukturout,"%s %s\n",name,data_type);
+            }
+            else i = j;
+            j++;
+        }
+        fclose(strukturin);
+        fclose(strukturout);
+    }
+    else{
+        fclose(strukturin);
+        fclose(strukturout);
+        fclose(tablein);
+        fclose(tableout);
+        return -1;
+    }
+    printf("hade\n");
+    char ambil[1000];
+    while(fgets(ambil,1000,tablein)){
+        printf("%s\n",ambil);
+        token = strtok(ambil,",");
+        int j = 0;
+        char baru[1000];
+        strcpy(baru,"");
+        while(token!=NULL){
+            if(j!=i){
+                // printf("token %s\n",token);
+                strcat(baru,token);
+                strcat(baru,",");
+            }
+            token = strtok(NULL,",");
+            j++;
+        }
+        baru[strlen(baru)-1] = 0;
+        printf("%s\n",baru);
+        fprintf(tableout,"%s",baru);
+    }
+    fclose(tablein);
+    fclose(tableout);
+    remove(open);
+    rename(a,open);
+    remove(append);
+    rename(b,append);
+    return 1;
+}
 
 int login(char* tipe, char *login_user){
    
@@ -518,6 +757,57 @@ void *play(void *arg){
                 sprintf(message,"database dropped");
             }else if(status == 0){
                 strcpy(message,"permission denied");
+            }
+        }else if(!strncmp(buffer,"INSERT INTO",11)){
+            int status = insert(buffer,use_database);
+            switch (status) {
+                case 1:
+                    strcpy(message,"Insert success");
+                    break;
+                case -1:
+                    strcpy(message,"no database used");
+                    break;
+                case -2:
+                    strcpy(message,"Table doesnt exist");
+                    break;
+                case -3:
+                    strcpy(message,"coloumn count doesnt match");
+                    break;
+                case -4:
+                    strcpy(message,"invalid input");
+                    break;
+            }
+        }else if(!strncmp(buffer,"DROP TABLE",10)){
+            int status = drop_table(buffer,use_database);
+            switch (status) {
+                case 1:
+                    strcpy(message,"delete success");
+                    break;
+                case -1:
+                    strcpy(message,"table does not exist\n");
+                    break;
+                case -2:
+                    strcpy(message,"no database used");
+                    break;
+            }
+        }else if(!strncmp(buffer,"DROP COLUMN",11)){
+            int status = drop_column(buffer,use_database);
+            switch (status) {
+                case 1:
+                    strcpy(message,"delete success");
+                    break;
+                case -1:
+                    strcpy(message,"column does not exist\n");
+                    break;
+                case -2:
+                    strcpy(message,"no database used");
+                    break;
+                case -3:
+                    strcpy(message,"invalid syntax");
+                    break;
+                default:
+                    strcpy(message,"duh");
+                    break;
             }
         }else{
             strcpy(message,"syntax error");
