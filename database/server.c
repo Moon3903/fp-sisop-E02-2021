@@ -16,9 +16,9 @@
 
 pthread_t tid[MAX_CLIENTS];
 
-char *project_path = "/home/ryan/Desktop/fp-sisop-E02-2021/database";
-char *user_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
-char *permission_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
+char *project_path = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database";
+char *user_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
+char *permission_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
 
 
 bool checkClose(int valread, int *new_socket){
@@ -678,6 +678,127 @@ int login(char* tipe, char *login_user){
     
 }
 
+int delete_from(char *buffer,char *use_database){
+
+    if(!strlen(use_database)){
+        return -1;
+    }
+
+    char tempBuffer[1024] = {0};
+    strcpy(tempBuffer,buffer);
+   
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
+    char input[10][1000];
+    int i=0;
+
+    while (token != NULL) {
+        strcpy(input[i++],token);
+        token = strtok(NULL, " ");
+    }
+
+    if(i == 3){
+        char path[10000];
+        sprintf(path,"%s/databases/%s/%s.txt",project_path,use_database,input[2]);
+        FILE *filein,*fileout;
+        filein = fopen(path,"r");
+        if(filein){
+            fclose(filein);
+            fileout = fopen(path,"w");
+            fprintf(fileout,"");
+            fclose(fileout);
+        }
+        else{
+            return -3;
+        }
+        return 1;
+    }
+    else if(i == 5){
+        if(strcmp(input[3],"WHERE")){
+            return -2;
+        }
+
+        char table_name[1000], cmp[1000];
+
+        token = strtok(input[4],"=");
+        strcpy(table_name,token);
+        token = strtok(NULL,"=");
+        strcpy(cmp,token);
+
+        char path[10000],struk[10000],n_path[10000];
+
+        sprintf(struk,"%s/databases/%s/struktur_%s.txt",project_path,use_database,input[2]);
+        FILE *strukturin;
+        strukturin = fopen(struk,"r");
+
+        int i = -1;
+        int k = 0;
+        char ret[1000],table[1000];
+        if(strukturin){
+            while(fscanf(strukturin,"%s %s",table,ret) != EOF){
+                if(!strcmp(table_name,table)){
+                    i = k;
+                }
+                k++;
+            }
+            if(i == -1){
+                fclose(strukturin);
+                return -4;
+            }
+            fclose(strukturin);
+        }
+        else{
+            return -3;
+        }
+
+        sprintf(path,"%s/databases/%s/%s.txt",project_path,use_database,input[2]);
+        sprintf(n_path,"%s/databases/%s/%s2.txt",project_path,use_database,input[2]);
+        FILE *filein,*fileout;
+        filein = fopen(path,"r");
+        fileout = fopen(n_path,"w");
+        char ambil[1000];
+        if(filein){
+            while(fgets(ambil,1000,filein)){
+                token = strtok(ambil,",");
+                int j = 0;
+                char baru[1000];
+                strcpy(baru,"");
+                int flag = 0;
+                while(token!=NULL){
+                    strcat(baru,token);
+                    strcat(baru,",");
+                    if(j==i){
+                        // printf("%s %s\n",cmp,token);
+                        if(!strcmp(cmp,token)){
+                            flag = 1;
+                        }
+                    }
+                    token = strtok(NULL,",");
+                    j++;
+                }
+                if(!flag){
+                    baru[strlen(baru)-1] = 0;
+                    // fprintf(fileout,"%s",baru);
+                    if(baru[strlen(baru)-1] != '\n'){
+                        fprintf(fileout,"\n");
+                    }
+                }
+            }
+            fclose(filein);
+            fclose(fileout);
+            remove(path);
+            rename(n_path,path);
+            return 1;
+        }
+        else{
+            return -3;
+        }
+    }
+    else{
+        return -2;
+    }
+}
+
 void *play(void *arg){
     int *new_socket = (int *) arg;
     int valread;
@@ -839,6 +960,28 @@ void *play(void *arg){
                     break;
                 case -3:
                     strcpy(message,"invalid syntax");
+                    break;
+                default:
+                    strcpy(message,"duh");
+                    break;
+            }
+        }else if(!strncmp(buffer,"DELETE FROM",11)){
+            int status = delete_from(buffer,use_database);
+            switch(status){
+                case 1:
+                    strcpy(message,"delete success");
+                    break;
+                case -1:
+                    strcpy(message,"no database used");
+                    break;
+                case -2:
+                    strcpy(message,"invalid syntax");
+                    break;
+                case -3:
+                    strcpy(message,"table does not exist");
+                    break;
+                case -4:
+                    strcpy(message,"column does not exist");
                     break;
                 default:
                     strcpy(message,"duh");
