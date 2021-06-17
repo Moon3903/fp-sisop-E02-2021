@@ -63,6 +63,20 @@ bool check_user(char *user){
     return 0;
 }
 
+void append_log(char *login_user, char *command){
+    FILE *fileout;
+    char fpath[1000]={0};
+    sprintf(fpath,"%s/dblog.log",project_path);
+    fileout = fopen(fpath,"a");
+
+    char time_now[100] = {0};
+	time_t t = time(NULL);
+	struct tm *tm = localtime(&t);
+	strftime(time_now,100,"%Y-%m-%d %H:%M:%S",tm);
+    fprintf(fileout, "%s:%s:%s\n",time_now,login_user,command);
+	fclose(fileout);
+}
+
 char* trim(char *text){
     int index = 0;
     while(text[index] == ' ' || text[index] == '\t'){
@@ -701,7 +715,7 @@ void *play(void *arg){
         }
 
         if(!strncmp(buffer,"CREATE USER",11)){
-            printf("masuk\n");
+            append_log(login_user, buffer);
             int status = create_user(buffer,tipe);
             if(status == -2){
                 strcpy(message,"user already exist");
@@ -713,6 +727,7 @@ void *play(void *arg){
                 strcpy(message,"create user success");
             }
         }else if(!strncmp(buffer,"USE",3)){
+            append_log(login_user, buffer);
             int status = use(buffer,tipe,login_user,use_database);
             if(status == -2){
                 strcpy(message,"unknown database");
@@ -724,6 +739,7 @@ void *play(void *arg){
                 strcpy(message,"permission denied");
             }
         }else if(!strncmp(buffer,"CREATE DATABASE",15)){
+            append_log(login_user, buffer);
             int status = create_database(buffer,tipe,login_user);
             if(status == -1){
                 strcpy(message,"syntax error");
@@ -733,6 +749,7 @@ void *play(void *arg){
                 strcpy(message,"permission denied");
             }
         }else if(!strncmp(buffer,"GRANT PERMISSION",16)){
+            append_log(login_user, buffer);
             int status = grant_pemission(buffer,tipe);
             if(status == -3){
                 strcpy(message,"unknown user");
@@ -746,6 +763,7 @@ void *play(void *arg){
                 strcpy(message,"grant permission denied");
             }
         }else if(!strncmp(buffer,"CREATE TABLE",12)){
+            append_log(login_user, buffer);
             int status = create_table(buffer,use_database);
             if(status == -4){
                 strcpy(message,"invalid column type");
@@ -761,6 +779,7 @@ void *play(void *arg){
                 strcpy(message,"table already exist");
             }
         }else if(!strncmp(buffer,"DROP DATABASE",13)){
+            append_log(login_user, buffer);
             int status = drop_database(buffer,tipe,login_user,use_database);
             if(status == -2){
                 strcpy(message,"unknown database");
@@ -772,6 +791,7 @@ void *play(void *arg){
                 strcpy(message,"permission denied");
             }
         }else if(!strncmp(buffer,"INSERT INTO",11)){
+            append_log(login_user, buffer);
             int status = insert(buffer,use_database);
             switch (status) {
                 case 1:
@@ -791,6 +811,7 @@ void *play(void *arg){
                     break;
             }
         }else if(!strncmp(buffer,"DROP TABLE",10)){
+            append_log(login_user, buffer);
             int status = drop_table(buffer,use_database);
             switch (status) {
                 case 1:
@@ -804,6 +825,7 @@ void *play(void *arg){
                     break;
             }
         }else if(!strncmp(buffer,"DROP COLUMN",11)){
+            append_log(login_user, buffer);
             int status = drop_column(buffer,use_database);
             switch (status) {
                 case 1:
@@ -823,6 +845,7 @@ void *play(void *arg){
                     break;
             }
         }else{
+            append_log(login_user, buffer);
             strcpy(message,"syntax error");
         }
 
