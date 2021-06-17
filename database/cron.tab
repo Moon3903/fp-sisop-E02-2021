@@ -1,0 +1,1 @@
+0 */1 * * * cd /home/ryan/Desktop/fp-sisop-E02-2021/database && /usr/bin/zip -rm `date "+\%Y-\%m-\%d"`\ `date +"\%H:\%M:\%S"` dblog.log *.backup
