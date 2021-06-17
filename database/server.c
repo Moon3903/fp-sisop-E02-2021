@@ -16,8 +16,9 @@
 
 pthread_t tid[MAX_CLIENTS];
 
-char *user_table = "administrator/user.txt";
-char *permission_table = "administrator/permission.txt";
+char *project_path = "/home/ryan/Desktop/fp-sisop-E02-2021/database";
+char *user_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
+char *permission_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
 
 
 bool checkClose(int valread, int *new_socket){
@@ -176,7 +177,10 @@ int create_database(char *buffer, char *tipe, char *login_user){
         return -1;
     }
 
-    if(mkdir(database,0777) == 0){
+    char fpath[1000] = {0};
+    sprintf(fpath,"%s/databases/%s",project_path,database);
+    
+    if(mkdir(fpath,0777) == 0){
         char record[1000] = {0};
         sprintf(record,"%s %s", database, login_user);
         file(permission_table,record);      
@@ -285,13 +289,14 @@ int create_table(char *buffer,char *use_database){
         }
     }
 
-    char fpath[100] = {0};
-    sprintf(fpath,"%s/%s.txt",use_database,table);
+    char fpath[1000] = {0};
+    sprintf(fpath,"%s/databases/%s/%s.txt",project_path,use_database,table);
     FILE *open;
     if(!(open = fopen(fpath,"r"))){
         open = fopen(fpath,"w");
         char struktur_table[1000] = {0};
-        sprintf(struktur_table,"%s/struktur_%s.txt",use_database,table);
+        sprintf(struktur_table,"%s/databases/%s/struktur_%s.txt",project_path,use_database,table);
+        // sprintf(struktur_table,"%s/struktur_%s.txt",use_database,table);
 
         for(int i = 0; i < ind; i++){
             file(struktur_table,split_kolom[i]);
@@ -354,22 +359,25 @@ int drop_database(char *buffer, char *tipe, char *login_user, char *use_database
         }
 
         if(bisa || (ada && !strcmp(login_user,"root"))){              
-            char fpath[100] = {0};
+            char fpath[1000] = {0};
+            sprintf(fpath,"%s/databases/%s",project_path,database);
             pthread_t thread1;
-            int iret1 = pthread_create(&thread1,NULL,hapusFolder,database);;
+            int iret1 = pthread_create(&thread1,NULL,hapusFolder,fpath);;
             pthread_join(thread1,NULL);
             
             filein = fopen(permission_table,"r");
-
+            char temp_permission[1000] = {0};
+            sprintf(temp_permission,"%s/databases/administrator/temp.txt",project_path);
+            fileout = fopen(temp_permission,"w");
             while(fscanf(filein,"%s %s",tmpdatabase,tmpuser) != EOF){
                 if(strcmp(tmpdatabase,database)){
-                    char record[1000];
-                    sprintf(record, "%s %s", tmpdatabase, tmpuser);
-                    file("administrator/temp.txt",record);
+                    char record[1000] = {0};
+                    fprintf(fileout, "%s %s\n", tmpdatabase, tmpuser);
                 }
             }
+            fclose(fileout);
             remove(permission_table);
-            rename("administrator/temp.txt",permission_table);
+            rename(temp_permission,permission_table);
 
             if(!strcmp(use_database,database)){
                 bzero(use_database,sizeof(use_database));
@@ -430,11 +438,12 @@ int insert(char *buffer, char *use_database){
     token = strtok(NULL," ");
     token = strtok(NULL," ");
 
-    char open[1000],append[1000];
-    strcpy(open,use_database);
-    strcat(open,"/struktur_");
-    strcat(open,token);
-    strcat(open,".txt");
+    char open[1000] = {0},append[1000] = {0};
+    sprintf(open,"%s/databases/%s/struktur_%s.txt",project_path,use_database,token);
+    // stcpy(open,use_database);
+    // strcat(open,"/struktur_");
+    // strcat(open,token);
+    // strcat(open,".txt");
     filein = fopen(open,"r");
 
    
@@ -452,10 +461,11 @@ int insert(char *buffer, char *use_database){
         return -2;
     }
 
-    strcpy(append,use_database);
-    strcat(append,"/");
-    strcat(append,token);
-    strcat(append,".txt");
+    sprintf(append,"%s/databases/%s/%s.txt",project_path,use_database,token);
+    // strcpy(append,use_database);
+    // strcat(append,"/");
+    // strcat(append,token);
+    // strcat(append,".txt");
     fileout = fopen(append,"a");
 
     if(k != i){
@@ -500,17 +510,19 @@ int drop_table(char *buffer, char *use_database){
     token = strtok(NULL," ");
     token = strtok(NULL," ");
 
-    char open[1000],append[1000];
-    strcpy(open,use_database);
-    strcat(open,"/struktur_");
-    strcat(open,token);
-    strcat(open,".txt");
+    char open[1000] = {0},append[1000]={0};
+    sprintf(open,"%s/databases/%s/struktur_%s.txt",project_path,use_database,token);
+    // strcpy(open,use_database);
+    // strcat(open,"/struktur_");
+    // strcat(open,token);
+    // strcat(open,".txt");
     filein = fopen(open,"r");
 
-    strcpy(append,use_database);
-    strcat(append,"/");
-    strcat(append,token);
-    strcat(append,".txt");
+    sprintf(append,"%s/databases/%s/%s.txt",project_path,use_database,token);
+    // strcpy(append,use_database);
+    // strcat(append,"/");
+    // strcat(append,token);
+    // strcat(append,".txt");
 
     if(filein){
         fclose(filein);
@@ -548,13 +560,18 @@ int drop_column(char *buffer, char *use_database){
     FILE *strukturin,*strukturout
         ,*tablein,*tableout;
 
-    char open[1000],append[1000],a[1000],b[1000];
-    strcpy(open,use_database);
-    strcat(open,"/struktur_");
-    strcat(open,input[4]);
+    char open[1000]={0},append[1000]={0},a[1000]={0},b[1000]={0};
+    sprintf(open,"%s/databases/%s/struktur_%s",project_path,use_database,input[4]);
     strcpy(a,open);
     strcat(a,"2.txt");
     strcat(open,".txt");
+
+    // strcpy(open,use_database);
+    // strcat(open,"/struktur_");
+    // strcat(open,input[4]);
+    // strcpy(a,open);
+    // strcat(a,"2.txt");
+    // strcat(open,".txt");
     strukturin = fopen(open,"r");
    
     int i = 0,j = 0;
@@ -576,12 +593,17 @@ int drop_column(char *buffer, char *use_database){
         return -1;
     }
 
-    strcpy(append,use_database);
-    strcat(append,"/");
-    strcat(append,input[4]);
+    sprintf(append,"%s/databases/%s/%s",project_path,use_database,input[4]);
     strcpy(b,append);
     strcat(b,"2.txt");
     strcat(append,".txt");
+
+    // strcpy(append,use_database);
+    // strcat(append,"/");
+    // strcat(append,input[4]);
+    // strcpy(b,append);
+    // strcat(b,"2.txt");
+    // strcat(append,".txt");
     tablein = fopen(append,"r");
     tableout = fopen(b,"w");
 
@@ -816,7 +838,12 @@ void *play(void *arg){
 }
 
 int main(int argc, char const *argv[]) {
-    mkdir("administrator",0777);
+    char dbpath[1000] = {0}, adminpath[1000] = {0};
+    sprintf(dbpath,"%s/databases",project_path);
+    sprintf(adminpath,"%s/administrator",dbpath);
+
+    mkdir(dbpath,0777);
+    mkdir(adminpath,0777);
     int server_fd, new_socket[MAX_CLIENTS];
     struct sockaddr_in address;
     int opt = 1;
