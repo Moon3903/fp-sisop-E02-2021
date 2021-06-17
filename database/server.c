@@ -62,6 +62,15 @@ bool check_user(char *user){
     return 0;
 }
 
+char* trim(char *text){
+    int index = 0;
+    while(text[index] == ' ' || text[index] == '\t'){
+        index++;
+    }
+    char *temp = strchr(text,text[index]);
+    return temp;
+}
+
 void file(char path[1000],char tofile[1000]){
     FILE* ptr = fopen(path,"a");
     fprintf(ptr,"%s\n",tofile);
@@ -218,6 +227,80 @@ int grant_pemission(char *buffer, char *tipe){
     }
 }
 
+int create_table(char *buffer,char *use_database){
+    if(strlen(use_database) == 0){
+        return -2;
+    }
+    char tempBuffer[1024] = {0}, table[100] = {0};
+    strcpy(tempBuffer,buffer);
+    
+    
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
+    token = strtok(NULL," ");
+    token = strtok(NULL," ");
+
+    if(token != NULL){
+        strcpy(table,token);
+    }else{
+        return -1;
+    }
+    
+    char *temp;
+    temp = strchr(buffer,'(');
+    if(!temp){
+        return -1;
+    }else{
+        temp = temp + 1;
+    }
+
+    char kolom[1000] = {0};
+    strcpy(kolom,temp);
+
+    char *token1 = strtok(kolom,";");
+    token1 = strtok(kolom,")");
+
+    char split_kolom[100][100] = {0};
+    int ind = 0;
+    token1 = strtok(kolom,",");
+    while(token1!=NULL){
+        strcpy(split_kolom[ind++],trim(token1));
+        token1 = strtok(NULL,",");
+    }
+
+    //cek kelengkapan nama kolom dan tipe kolom
+    for(int i = 0; i < ind; i++){
+        char temp2[1000] = {0},nama_kolom[100] = {0}, tipe_kolom[20] = {0};
+        strcpy(temp2,split_kolom[i]);
+        char *token2 = strtok(temp2," ");
+        strcpy(nama_kolom,token2);
+        token2 = strtok(NULL," ");
+        if(token2){
+            strcpy(tipe_kolom,token2);
+            if(strcmp(tipe_kolom,"int") && strcmp(tipe_kolom,"string")){
+                return -4;
+            }
+        }else{
+            return -3;
+        }
+    }
+
+    char fpath[100] = {0};
+    sprintf(fpath,"%s/%s.txt",use_database,table);
+    FILE *open;
+    if(!(open = fopen(fpath,"r"))){
+        open = fopen(fpath,"w");
+        char struktur_table[1000] = {0};
+        sprintf(struktur_table,"%s/struktur_%s.txt",use_database,table);
+
+        for(int i = 0; i < ind; i++){
+            file(struktur_table,split_kolom[i]);
+        }
+        return 1;
+    }else{
+        return 0;
+    }
+}
 
 
 int login(char* tipe, char *login_user){
@@ -328,6 +411,21 @@ void *play(void *arg){
                 strcpy(message,"grant permission success");
             }else if(status == 0){
                 strcpy(message,"grant permission denied");
+            }
+        }else if(!strncmp(buffer,"CREATE TABLE",12)){
+            int status = create_table(buffer,use_database);
+            if(status == -4){
+                strcpy(message,"invalid column type");
+            }else if(status == -3){
+                strcpy(message,"missing column type");
+            }else if(status == -2){
+                strcpy(message,"no database used");
+            }else if(status == -1){
+                strcpy(message,"syntax error");
+            }else if(status == 1){
+                strcpy(message,"create success");
+            }else if(status == 0){
+                strcpy(message,"table already exist");
             }
         }else{
             strcpy(message,"syntax error");
