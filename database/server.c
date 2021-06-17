@@ -353,7 +353,7 @@ int drop_database(char *buffer, char *tipe, char *login_user, char *use_database
             }
         }
 
-        if(bisa || (!bisa && !strcmp(login_user,"root"))){                
+        if(bisa || (ada && !strcmp(login_user,"root"))){              
             char fpath[100] = {0};
             pthread_t thread1;
             int iret1 = pthread_create(&thread1,NULL,hapusFolder,database);;
@@ -410,9 +410,7 @@ int insert(char *buffer, char *use_database){
 
     char *token = strtok(tmp,"(");
     token = strtok(NULL,"(");
-    printf("%s\n",token);
     token = strtok(token,")");
-    printf("%s\n",token);
     token = strtok(token,",");
 
     char data[100][1000];
@@ -439,17 +437,11 @@ int insert(char *buffer, char *use_database){
     strcat(open,".txt");
     filein = fopen(open,"r");
 
-    strcpy(append,use_database);
-    strcat(append,"/");
-    strcat(append,token);
-    strcat(append,".txt");
-    fileout = fopen(append,"a");
-
+   
     char data_type[100][1000];
     char tmp_type[1000],ret[1000];
     int k = 0;
 
-    printf("IN\n");
     if(filein){
         while(fscanf(filein,"%s %s",ret,tmp_type) != EOF){
             strcpy(data_type[k],tmp_type);
@@ -457,20 +449,23 @@ int insert(char *buffer, char *use_database){
         }
     }
     else{
-        fclose(filein);
-        fclose(fileout);
         return -2;
     }
+
+    strcpy(append,use_database);
+    strcat(append,"/");
+    strcat(append,token);
+    strcat(append,".txt");
+    fileout = fopen(append,"a");
 
     if(k != i){
         fclose(filein);
         fclose(fileout);
         return -3;
     }
-    printf("out\n");
+
     for(int j=0;j<i;j++){
         int val = validasi(data[j]);
-        printf("%s\n",data_type[j]);
         if(val == 1 && !strcmp(data_type[j],"string")) ;
         else if (val == 2 && !strcmp(data_type[j],"int")) ;
         else {
@@ -479,7 +474,6 @@ int insert(char *buffer, char *use_database){
             return -4;
         }  
     }
-    printf("sampe\n");
     for(int j=0;j<i-1;j++){
         fprintf(fileout,"%s,",data[j]);
     }
@@ -501,7 +495,8 @@ int drop_table(char *buffer, char *use_database){
     char tmp[1000];
     char *token;
     strcpy(tmp,buffer);
-    token = strtok(tmp," ");
+    token = strtok(tmp,";");
+    token = strtok(token," ");
     token = strtok(NULL," ");
     token = strtok(NULL," ");
 
@@ -561,21 +556,12 @@ int drop_column(char *buffer, char *use_database){
     strcat(a,"2.txt");
     strcat(open,".txt");
     strukturin = fopen(open,"r");
-    strukturout = fopen(a,"w");
-
-    strcpy(append,use_database);
-    strcat(append,"/");
-    strcat(append,input[4]);
-    strcpy(b,append);
-    strcat(b,"2.txt");
-    strcat(append,".txt");
-    tablein = fopen(append,"r");
-    tableout = fopen(b,"w");
-
+   
     int i = 0,j = 0;
     char data_type[1000], name[1000];
-    printf("duh\n");
+
     if(strukturin){
+        strukturout = fopen(a,"w");
         while(fscanf(strukturin,"%s %s",name,data_type) != EOF){
             if(strcmp(input[2],name)){
                 fprintf(strukturout,"%s %s\n",name,data_type);
@@ -587,23 +573,26 @@ int drop_column(char *buffer, char *use_database){
         fclose(strukturout);
     }
     else{
-        fclose(strukturin);
-        fclose(strukturout);
-        fclose(tablein);
-        fclose(tableout);
         return -1;
     }
-    printf("hade\n");
+
+    strcpy(append,use_database);
+    strcat(append,"/");
+    strcat(append,input[4]);
+    strcpy(b,append);
+    strcat(b,"2.txt");
+    strcat(append,".txt");
+    tablein = fopen(append,"r");
+    tableout = fopen(b,"w");
+
     char ambil[1000];
     while(fgets(ambil,1000,tablein)){
-        printf("%s\n",ambil);
         token = strtok(ambil,",");
         int j = 0;
         char baru[1000];
         strcpy(baru,"");
         while(token!=NULL){
             if(j!=i){
-                // printf("token %s\n",token);
                 strcat(baru,token);
                 strcat(baru,",");
             }
@@ -611,8 +600,10 @@ int drop_column(char *buffer, char *use_database){
             j++;
         }
         baru[strlen(baru)-1] = 0;
-        printf("%s\n",baru);
         fprintf(tableout,"%s",baru);
+        if(baru[strlen(baru)-1] != '\n'){
+            fprintf(tableout,"\n");
+        }
     }
     fclose(tablein);
     fclose(tableout);
@@ -768,7 +759,7 @@ void *play(void *arg){
                     strcpy(message,"no database used");
                     break;
                 case -2:
-                    strcpy(message,"Table doesnt exist");
+                    strcpy(message,"table does not exist");
                     break;
                 case -3:
                     strcpy(message,"coloumn count doesnt match");
@@ -781,10 +772,10 @@ void *play(void *arg){
             int status = drop_table(buffer,use_database);
             switch (status) {
                 case 1:
-                    strcpy(message,"delete success");
+                    strcpy(message,"drop table success");
                     break;
                 case -1:
-                    strcpy(message,"table does not exist\n");
+                    strcpy(message,"table does not exist");
                     break;
                 case -2:
                     strcpy(message,"no database used");
@@ -794,10 +785,10 @@ void *play(void *arg){
             int status = drop_column(buffer,use_database);
             switch (status) {
                 case 1:
-                    strcpy(message,"delete success");
+                    strcpy(message,"drop column success");
                     break;
                 case -1:
-                    strcpy(message,"column does not exist\n");
+                    strcpy(message,"table does not exist");
                     break;
                 case -2:
                     strcpy(message,"no database used");
