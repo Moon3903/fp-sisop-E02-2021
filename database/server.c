@@ -245,7 +245,7 @@ int create_table(char *buffer,char *use_database){
     }else{
         return -1;
     }
-    
+
     char *temp;
     temp = strchr(buffer,'(');
     if(!temp){
@@ -300,6 +300,87 @@ int create_table(char *buffer,char *use_database){
     }else{
         return 0;
     }
+}
+
+void *hapusFolder(void *arg){
+    pid_t child;
+    child = fork();
+    if(child == 0){
+        char *fpath = (char *) arg;
+        char *argv[] = {"rm","-rf",fpath, NULL};
+        execv("/bin/rm",argv);
+    }
+}
+
+int drop_database(char *buffer, char *tipe, char *login_user, char *use_database){
+
+    char tempBuffer[1024] = {0}, database[100] = {0};
+    strcpy(tempBuffer,buffer);
+    
+    
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
+    token = strtok(NULL," ");
+    token = strtok(NULL," ");
+    
+    if(token != NULL){
+        strcpy(database,token);
+    }else{
+        return -1;
+    }
+
+    // if(!strcmp(tipe,"root")){
+    //     strcpy(use_database, database);
+    //     return 1;
+    // }
+
+
+    FILE *filein, *fileout;
+    filein = fopen(permission_table,"r");
+
+
+    char tmpdatabase[1000],tmpuser[1000];
+    bool ada = false,bisa =false;
+    if(filein){
+        while(fscanf(filein,"%s %s",tmpdatabase,tmpuser) != EOF){
+            if(!strcmp(tmpdatabase,database)){
+                ada = true;
+                if(!strcmp(tmpuser,login_user)){
+                    fclose(filein);
+                    bisa = true;
+                    break;
+                }
+            }
+        }
+
+        if(bisa || (!bisa && !strcmp(login_user,"root"))){                
+            char fpath[100] = {0};
+            pthread_t thread1;
+            int iret1 = pthread_create(&thread1,NULL,hapusFolder,database);;
+            pthread_join(thread1,NULL);
+            
+            filein = fopen(permission_table,"r");
+
+            while(fscanf(filein,"%s %s",tmpdatabase,tmpuser) != EOF){
+                if(strcmp(tmpdatabase,database)){
+                    char record[1000];
+                    sprintf(record, "%s %s", tmpdatabase, tmpuser);
+                    file("administrator/temp.txt",record);
+                }
+            }
+            remove(permission_table);
+            rename("administrator/temp.txt",permission_table);
+
+            if(!strcmp(use_database,database)){
+                bzero(use_database,sizeof(use_database));
+            }
+            return 1;
+        }        
+    }
+    if(!ada){
+        return -2;
+    }
+    return 0;
 }
 
 
@@ -426,6 +507,17 @@ void *play(void *arg){
                 strcpy(message,"create success");
             }else if(status == 0){
                 strcpy(message,"table already exist");
+            }
+        }else if(!strncmp(buffer,"DROP DATABASE",13)){
+            int status = drop_database(buffer,tipe,login_user,use_database);
+            if(status == -2){
+                strcpy(message,"unknown database");
+            }else if(status == -1){
+                strcpy(message,"syntax error");
+            }else if(status == 1){
+                sprintf(message,"database dropped");
+            }else if(status == 0){
+                strcpy(message,"permission denied");
             }
         }else{
             strcpy(message,"syntax error");
