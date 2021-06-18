@@ -20,6 +20,25 @@ char *project_path = "/home/ryan/Desktop/fp-sisop-E02-2021/database";
 char *user_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
 char *permission_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
 
+void make_daemon(){
+    pid_t child, childSID;
+
+    child = fork();
+
+    if(child < 0) exit(EXIT_FAILURE);
+    else if(child > 0) exit(EXIT_SUCCESS);
+
+    umask(0);
+    childSID = setsid();
+
+    if(childSID < 0) exit(EXIT_FAILURE);
+
+    if((chdir("/")) < 0) exit(EXIT_FAILURE);
+
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+}
 
 bool checkClose(int valread, int *new_socket){
     if(valread == 0){
@@ -778,7 +797,7 @@ int delete_from(char *buffer,char *use_database){
                 }
                 if(!flag){
                     baru[strlen(baru)-1] = 0;
-                    // fprintf(fileout,"%s",baru);
+                    fprintf(fileout,"%s",baru);
                     if(baru[strlen(baru)-1] != '\n'){
                         fprintf(fileout,"\n");
                     }
@@ -1132,6 +1151,7 @@ void *play(void *arg){
 }
 
 int main(int argc, char const *argv[]) {
+
     char dbpath[1000] = {0}, adminpath[1000] = {0};
     sprintf(dbpath,"%s/databases",project_path);
     sprintf(adminpath,"%s/administrator",dbpath);
@@ -1168,7 +1188,7 @@ int main(int argc, char const *argv[]) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-
+    make_daemon();
     int ctr = 0;
     while(1){
         if ((new_socket[ctr] = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
