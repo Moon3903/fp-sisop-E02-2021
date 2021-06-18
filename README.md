@@ -14,9 +14,9 @@
 | Autentikasi                  | :heavy_check_mark:           |
 | Authorisasi                  | :heavy_check_mark:           |
 | Data Definition Language     | :heavy_check_mark:           |
-| Data Manipulation Language   |                              |
+| Data Manipulation Language   | :heavy_check_mark:           |
 | Logging                      | :heavy_check_mark:           |
-| Reliability                  | :x:                          |
+| Reliability                  | :heavy_check_mark:           |
 | Tambahan                     | :heavy_check_mark:           |
 | Error Handling               | :heavy_check_mark:           |
 | Extra                        | :heavy_check_mark:           |
