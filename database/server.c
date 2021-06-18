@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #define PORT 8080
 #define MAX_CLIENTS 1000
@@ -80,6 +81,86 @@ bool check_user(char *user){
         }
     }
     return 0;
+}
+
+void generate_command(int *new_socket, char *use_database){
+    DIR *dp;
+    struct dirent *ep;
+    char fpath[1000] = {0};
+    sprintf(fpath,"%s/databases/%s",project_path,use_database);
+
+    dp = opendir(fpath);
+
+    if (dp != NULL)
+    {
+        while ((ep = readdir (dp))) {
+          if(!strncmp(ep->d_name,"struktur_",9)){
+              char table_name[1000] = {0};
+              char temp[1000] = {0};
+              strcpy(temp,ep->d_name);
+              char *token = strtok(temp,"_");
+              token = strtok(NULL,"_");
+              strcpy(table_name,token);
+
+              FILE *filein;
+              char path[1000] = {0};
+              sprintf(path,"%s/databases/%s/%s",project_path,use_database,ep->d_name);
+
+              char kolom[100][1000] = {0};
+              int jumlah_kolom = 0;
+              filein = fopen(path,"r");
+              if(filein){
+                char temp2[1000];
+                while((fscanf(filein,"%[^\n]%*c",temp2)) != EOF){
+                strcpy(kolom[jumlah_kolom++],temp2);
+                }
+                fclose(filein);
+
+                int valread;
+                char command[1000] = {0}, buffer[1024] = {0}, table[1000] = {0};
+                
+                strcpy(table,table_name);
+                char *token_table = strtok(table,".");
+                sprintf(command,"DROP TABLE %s;",token_table);
+                send(*new_socket , command , strlen(command) , 0 );
+                valread = recv( *new_socket , buffer, 1024, 0);
+            
+                bzero(command,sizeof(command));
+                sprintf(command,"CREATE TABLE %s (",token_table);
+                for(int i = 0; i < jumlah_kolom; i++){
+                    strcat(command,kolom[i]);
+                    strcat(command,",");
+                }
+                command[strlen(command)-1] = ')';
+                strcat(command,";");
+
+                send(*new_socket , command , strlen(command) , 0 );
+                valread = recv( *new_socket , buffer, 1024, 0);
+
+                bzero(path,sizeof(path));
+                sprintf(path,"%s/databases/%s/%s",project_path,use_database,table_name);
+
+                filein = fopen(path,"r");
+                if(filein){
+                    while((fscanf(filein,"%[^\n]%*c",temp2)) != EOF){
+                        bzero(command,sizeof(command));
+                        sprintf(command,"INSERT INTO %s VALUES (%s);",token_table,temp2);
+                        send(*new_socket , command , strlen(command) , 0 );
+                        valread = recv( *new_socket , buffer, 1024, 0);
+                    }
+                    fclose(filein);
+                }
+                
+            }
+        }
+    }
+    char command[1000] = {0};
+    bzero(command,sizeof(command));
+    strcpy(command,"DONE!!!");
+    send(*new_socket , command , strlen(command) , 0 );
+
+      (void) closedir (dp);
+    } else perror ("Couldn't open the directory");
 }
 
 void append_log(char *login_user, char *command){
@@ -164,7 +245,7 @@ int use(char *buffer, char *tipe, char *login_user, char *use_database){
         return -1;
     }
 
-    if(!strcmp(tipe,"root")){
+    if(!strncmp(tipe,"root",4)){
         strcpy(use_database, database);
         return 1;
     }
@@ -473,10 +554,6 @@ int insert(char *buffer, char *use_database){
 
     char open[1000] = {0},append[1000] = {0};
     sprintf(open,"%s/databases/%s/struktur_%s.txt",project_path,use_database,token);
-    // stcpy(open,use_database);
-    // strcat(open,"/struktur_");
-    // strcat(open,token);
-    // strcat(open,".txt");
     filein = fopen(open,"r");
 
    
@@ -495,10 +572,6 @@ int insert(char *buffer, char *use_database){
     }
 
     sprintf(append,"%s/databases/%s/%s.txt",project_path,use_database,token);
-    // strcpy(append,use_database);
-    // strcat(append,"/");
-    // strcat(append,token);
-    // strcat(append,".txt");
     fileout = fopen(append,"a");
 
     if(k != i){
@@ -545,17 +618,9 @@ int drop_table(char *buffer, char *use_database){
 
     char open[1000] = {0},append[1000]={0};
     sprintf(open,"%s/databases/%s/struktur_%s.txt",project_path,use_database,token);
-    // strcpy(open,use_database);
-    // strcat(open,"/struktur_");
-    // strcat(open,token);
-    // strcat(open,".txt");
     filein = fopen(open,"r");
 
     sprintf(append,"%s/databases/%s/%s.txt",project_path,use_database,token);
-    // strcpy(append,use_database);
-    // strcat(append,"/");
-    // strcat(append,token);
-    // strcat(append,".txt");
 
     if(filein){
         fclose(filein);
@@ -599,12 +664,6 @@ int drop_column(char *buffer, char *use_database){
     strcat(a,"2.txt");
     strcat(open,".txt");
 
-    // strcpy(open,use_database);
-    // strcat(open,"/struktur_");
-    // strcat(open,input[4]);
-    // strcpy(a,open);
-    // strcat(a,"2.txt");
-    // strcat(open,".txt");
     strukturin = fopen(open,"r");
    
     int i = 0,j = 0;
@@ -631,12 +690,6 @@ int drop_column(char *buffer, char *use_database){
     strcat(b,"2.txt");
     strcat(append,".txt");
 
-    // strcpy(append,use_database);
-    // strcat(append,"/");
-    // strcat(append,input[4]);
-    // strcpy(b,append);
-    // strcat(b,"2.txt");
-    // strcat(append,".txt");
     tablein = fopen(append,"r");
     tableout = fopen(b,"w");
 
@@ -916,22 +969,28 @@ int update(char *buffer,char *use_database){
 }
 
 void *play(void *arg){
+    bool mode_dump = false;
     int *new_socket = (int *) arg;
     int valread;
-    char tipe[1024] = {0};
+    char tipe[1024] = {0}, tmptipe[1024] = {0};
     valread = recv( *new_socket , tipe, 1024, 0);
     char login_user[100] = {0}, use_database[100]={0};
-    printf("?\n");
-    if(!strcmp(tipe,"root")){
-        printf("ini root\n");
+
+    strcpy(tmptipe,tipe);
+
+    if(!strncmp(tipe,"root",4)){
         strcpy(login_user,"root");
         char status_login[1000] = {0};
         strcpy(status_login,"authentication success");
         send(*new_socket , status_login , strlen(status_login) , 0 );
+
+        char *ret = strstr(tmptipe,"dump");
+        if(ret){
+            mode_dump = true;
+        }
     }
     else{
         //cek login
-        printf("%s\n",tipe);
         int masuk = login(tipe,login_user);
         char status_login[1000] = {0};
         
@@ -945,7 +1004,41 @@ void *play(void *arg){
         strcpy(status_login,"authentication success");
         send(*new_socket , status_login , strlen(status_login) , 0 );
 
-        printf("berhasil login%s\n",login_user);
+        printf("berhasil login %s\n",login_user);
+
+        char *ret = strstr(tmptipe,"dump");
+        if(ret){
+            mode_dump = true;
+        }
+    }
+
+    if(mode_dump){
+        char buffer[1024] = {0}, message[1024] = {0};
+        valread = recv( *new_socket , buffer, 1024, 0);
+        if(!strncmp(buffer,"USE",3)){
+            append_log(login_user, buffer);
+            int status = use(buffer,tipe,login_user,use_database);
+            if(status == -2){
+                strcpy(message,"unknown database");
+                close(*new_socket);
+            }else if(status == -1){
+                strcpy(message,"syntax error");
+                close(*new_socket);
+            }else if(status == 1){
+                sprintf(message,"database changed to %s",use_database);
+            }else if(status == 0){
+                strcpy(message,"permission denied");
+                close(*new_socket);
+            }
+            send(*new_socket , message , strlen(message) , 0 );
+            valread = recv( *new_socket , buffer, 1024, 0);
+            //generate command
+            generate_command(new_socket,use_database);
+        }
+
+
+        close(*new_socket);
+        return 0;
     }
     while(1){
         char buffer[1024] = {0};
@@ -1188,7 +1281,7 @@ int main(int argc, char const *argv[]) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    make_daemon();
+    // make_daemon();
     int ctr = 0;
     while(1){
         if ((new_socket[ctr] = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
