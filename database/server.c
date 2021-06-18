@@ -17,9 +17,9 @@
 
 pthread_t tid[MAX_CLIENTS];
 
-char *project_path = "/home/ryan/Desktop/fp-sisop-E02-2021/database";
-char *user_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
-char *permission_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
+char *project_path = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database";
+char *user_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
+char *permission_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
 
 void make_daemon(){
     pid_t child, childSID;
@@ -245,11 +245,6 @@ int use(char *buffer, char *tipe, char *login_user, char *use_database){
         return -1;
     }
 
-    if(!strncmp(tipe,"root",4)){
-        strcpy(use_database, database);
-        return 1;
-    }
-
 
     FILE *filein;
     filein = fopen(permission_table,"r");
@@ -261,7 +256,7 @@ int use(char *buffer, char *tipe, char *login_user, char *use_database){
         while(fscanf(filein,"%s %s",tmpdatabase,tmpuser) != EOF){
             if(!strcmp(tmpdatabase,database)){
                 ada = true;
-                if(!strcmp(tmpuser,login_user)){
+                if(!strcmp(tmpuser,login_user) || !strncmp(tipe,"root",4)){
                     fclose(filein);
                     strcpy(use_database, database);
                     return 1;
@@ -927,21 +922,53 @@ int update(char *buffer,char *use_database){
         return -3;
     }
 
+    int w = -1;
+    char banding[1000],temp[1000],cmpwhere[1000];
+
+
+    if(strlen(input[4])){
+        token = strtok(input[5],"=");
+        strcpy(banding,token);
+        token = strtok(NULL,"=");
+        strcpy(cmpwhere,token);
+        k=0;
+        if(!strcmp(input[4],"WHERE")){
+            strukturin = fopen(struk,"r");
+            while(fscanf(strukturin,"%s %s",temp,ret) != EOF){
+                if(!strcmp(banding,temp)){
+                    w = k;
+                }
+                k++;
+            }
+            if(w == -1){
+                fclose(strukturin);
+                return -4;
+            }
+            fclose(strukturin);
+        }
+    }
+
     sprintf(path,"%s/databases/%s/%s.txt",project_path,use_database,input[1]);
     sprintf(n_path,"%s/databases/%s/%s2.txt",project_path,use_database,input[1]);
     FILE *filein,*fileout;
     filein = fopen(path,"r");
     fileout = fopen(n_path,"w");
-    char ambil[1000];
+    char ambil[1000], lama[1000];
     if(filein){
         while(fgets(ambil,1000,filein)){
+            strcpy(lama,ambil);
             token = strtok(ambil,",");
             int j = 0;
             char baru[1000];
             strcpy(baru,"");
             int flag = 0;
             while(token!=NULL){
-                
+                if(j == w){
+                    // printf("%s %s %d\n",cmpwhere,token,w);
+                    if(!strcmp(cmpwhere,token)){
+                        flag = 1;
+                    }
+                }
                 if(j==i){
                     // printf("%s %s\n",cmp,token);
                     strcat(baru,cmp);
@@ -954,10 +981,19 @@ int update(char *buffer,char *use_database){
                 token = strtok(NULL,",");
                 j++;
             }
-            baru[strlen(baru)-1] = 0;
-            fprintf(fileout,"%s",baru);
-            if(baru[strlen(baru)-1] != '\n'){
-                fprintf(fileout,"\n");
+            if(flag == 1 || w == -1){
+                baru[strlen(baru)-1] = 0;
+                fprintf(fileout,"%s",baru);
+                if(baru[strlen(baru)-1] != '\n'){
+                    fprintf(fileout,"\n");
+                }
+            }
+            else{
+                lama[strlen(baru)-1] = 0;
+                fprintf(fileout,"%s",lama);
+                if(lama[strlen(lama)-1] != '\n'){
+                    fprintf(fileout,"\n");
+                }
             }
         }
         fclose(filein);
@@ -965,6 +1001,219 @@ int update(char *buffer,char *use_database){
         remove(path);
         rename(n_path,path);
         return 1;
+    }
+}
+
+int select_table(char *buffer, char *use_database){
+    if(!strlen(use_database)){
+        return -1;
+    }
+
+    char tempBuffer[1024] = {0};
+    strcpy(tempBuffer,buffer);
+   
+    char* token = strtok(tempBuffer, ";");
+    token = strtok(tempBuffer," ");
+    char input[10][1000];
+    int i=0;
+
+    while (token != NULL) {
+        strcpy(input[i++],token);
+        token = strtok(NULL, " ");
+    }
+
+    int all,w = -1,k,kasus,urut[20];
+    char banding[1000],temp[1000],cmpwhere[1000],ret[1000];
+    char path[10000],struk[10000],n_path[10000],cmp[20][1000];
+
+    FILE *strukturin;
+
+    if(!strcmp(input[1],"*")){
+        sprintf(struk,"%s/databases/%s/struktur_%s.txt",project_path,use_database,input[3]);
+        // printf("masu\n");
+
+        strukturin = fopen(struk,"r");
+
+        if(!strukturin){
+            return -3;
+        }
+
+        fclose(strukturin);
+
+        all = -1;
+        kasus = 2;
+        if(strcmp(input[2],"FROM")){
+            return -2;
+        }
+        if(i >= 5 && !strcmp(input[4],"WHERE")){
+            token = strtok(input[5],"=");
+            strcpy(banding,token);
+            token = strtok(NULL,"=");
+            strcpy(cmpwhere,token);
+
+            k=0;
+
+            if(!strcmp(input[4],"WHERE")){
+                strukturin = fopen(struk,"r");
+                while(fscanf(strukturin,"%s %s",temp,ret) != EOF){
+                    if(!strcmp(banding,temp)){
+                        w = k;
+                        // printf("setW %d\n",w);
+                    }
+                    k++;
+                }
+                if(w == -1){
+                    fclose(strukturin);
+                    return -4;
+                }
+                fclose(strukturin);
+            }
+        }
+    }
+
+    else{
+        for(int tes=0;tes<i;tes++){
+            printf("%d %s\n",tes,input[tes]);
+        }
+        kasus = 2;
+        while(kasus <= i && strcmp(input[kasus++],"FROM")){
+            
+        }
+
+        if(kasus > i){
+            return -2;
+        }
+        sprintf(struk,"%s/databases/%s/struktur_%s.txt",project_path,use_database,input[kasus]);
+        strukturin = fopen(struk,"r");
+
+        if(!strukturin){
+            printf("ka %d %s\n",kasus,struk);
+            return -3;
+        }
+
+        fclose(strukturin);
+
+        all = 0;
+        kasus = 1;
+        
+        for(int oo = 0; oo<20;oo++){
+            urut[oo] = -1;
+        }
+
+        char temp2[1000];
+        while(kasus < i && strcmp(input[kasus],"FROM")){
+            k=0;
+            strukturin = fopen(struk,"r");
+            while(fscanf(strukturin,"%s %s",temp,ret) != EOF){
+                strcpy(temp2,temp);
+                strcat(temp2,",");
+                if(!strcmp(input[kasus],temp) || !strcmp(temp2,input[kasus])){
+                    strcpy(cmp[all],input[kasus]);
+                    urut[all] = k;
+                    all++;
+                }
+                k++;
+            }
+            if(all == 0 || urut[all-1] == -1){
+                fclose(strukturin);
+                return -4;
+            }
+            fclose(strukturin);
+            kasus++;
+        }
+        if(kasus == i){
+            return -3;
+        }
+        if(i >= kasus+2 && !strcmp(input[kasus+2],"WHERE")){
+            token = strtok(input[kasus+3],"=");
+            strcpy(banding,token);
+            token = strtok(NULL,"=");
+            strcpy(cmpwhere,token);
+
+            k=0;
+
+            if(!strcmp(input[kasus+2],"WHERE")){
+                strukturin = fopen(struk,"r");
+                while(fscanf(strukturin,"%s %s",temp,ret) != EOF){
+                    if(!strcmp(banding,temp)){
+                        w = k;
+                    }
+                    k++;
+                }
+                if(w == -1){
+                    fclose(strukturin);
+                    return -4;
+                }
+                fclose(strukturin);
+            }
+        }
+    }
+
+    // printf("keluar\n");
+
+    sprintf(path,"%s/databases/%s/%s.txt",project_path,use_database,input[kasus+1]);
+    sprintf(n_path,"%s/databases/%s/%s2.txt",project_path,use_database,input[kasus+1]);
+    FILE *filein,*fileout;
+    filein = fopen(path,"r");
+    fileout = fopen(n_path,"w");
+    char ambil[1000], lama[1000],baru[1000];
+
+    if(filein){
+        // printf("iniw %d\n",w);
+        while(fgets(ambil,1000,filein)){
+            if(all == -1){
+                // printf("all\n");
+                if(w == -1){
+                    //kirim
+                    printf("%s\n",ambil);
+                }
+                else{
+                    // printf("else\n");
+                    char hade[1000];
+                    strcpy(hade,ambil);
+                    token = strtok(ambil,",");
+                    int j = 0;
+                    strcpy(baru,"");
+                    int flag = 0;
+                    while(token!=NULL){
+                        if(j == w){
+                            // printf("%s %s %d\n",cmpwhere,token,w);
+                            if(!strcmp(cmpwhere,token)){
+                                printf("%s\n",hade);
+                                break;
+                            }
+                        }
+                        token = strtok(NULL,",");
+                        j++;
+                    }
+                }
+            }
+            else{
+                char jadi[1000],hade[1000];
+                strcpy(jadi,"");
+                for(int oo = 0; oo < all; oo++){
+                    strcpy(hade,ambil);
+                    token = strtok(hade,",");
+                    int j = 0;
+                    strcpy(baru,"");
+                    int flag = 0;
+                    while(token!=NULL){
+                        if(j == urut[oo]){
+                            strcat(jadi,token);
+                            strcat(jadi,",");
+                            break;
+                        }
+                        token = strtok(NULL,",");
+                        j++;
+                    }
+                }
+                printf("%s\n",jadi);
+            }
+        }
+    }
+    else{
+        // printf("INI\n");
+        return -2;
     }
 }
 
@@ -1227,6 +1476,25 @@ void *play(void *arg){
                     strcpy(message,"duh");
                     break;
             }
+        }else if(!strncmp(buffer,"SELECT",6)){
+            int status = select_table(buffer,use_database);
+            switch(status){
+                case -1:
+                    strcpy(message,"no database used");
+                    break;
+                case -2:
+                    strcpy(message,"invalid syntax");
+                    break;
+                case -3:
+                    strcpy(message,"table does not exist");
+                    break;
+                case -4:
+                    strcpy(message,"column does not exist");
+                    break;
+                default:
+                    strcpy(message,"select success");
+                    break;
+            }
         }else{
             append_log(login_user, buffer);
             strcpy(message,"syntax error");
@@ -1281,7 +1549,7 @@ int main(int argc, char const *argv[]) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    make_daemon();
+    // make_daemon();
     int ctr = 0;
     while(1){
         if ((new_socket[ctr] = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
