@@ -136,7 +136,34 @@ int main(int argc, char const *argv[]) {
         if(checkClose(valread, sock)){
             break;
         }
-        printf("%s\n",buffer );
+        if(!strcmp(buffer,"mulai")){
+            char command[1000] = {0}, receive[1000] = {0};
+            strcpy(command,"ok");
+            send(sock , command , strlen(command) , 0 );
+            do{
+                bzero(receive,sizeof(receive));
+                int val = recv( sock , receive, 1000,0);
+                if(strcmp(receive,"DONE!!!")){
+                    if(receive[strlen(receive)-1] != '\n'){
+                        printf("%s\n",receive);
+                    }else{
+                        printf("%s",receive);
+                    }
+                    
+                    bzero(command,sizeof(command));
+                    strcpy(command,"ok");
+                    send(sock , command , strlen(command) , 0 );
+                }
+            }while(strcmp(receive,"DONE!!!"));
+            bzero(command,sizeof(command));
+            strcpy(command,"ok");
+            send(sock , command , strlen(command) , 0 );
+            int val = recv( sock , buffer, 1024,0);
+            printf("%s\n",buffer);
+            // return 1;
+        }else{
+            printf("%s\n",buffer );
+        }
     }
     return 0;
 }

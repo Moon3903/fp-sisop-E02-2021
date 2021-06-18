@@ -17,9 +17,9 @@
 
 pthread_t tid[MAX_CLIENTS];
 
-char *project_path = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database";
-char *user_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
-char *permission_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
+char *project_path = "/home/ryan/Desktop/fp-sisop-E02-2021/database";
+char *user_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
+char *permission_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
 
 void make_daemon(){
     pid_t child, childSID;
@@ -1004,7 +1004,7 @@ int update(char *buffer,char *use_database){
     }
 }
 
-int select_table(char *buffer, char *use_database){
+int select_table(char *buffer, char *use_database, int *new_socket){
     if(!strlen(use_database)){
         return -1;
     }
@@ -1072,9 +1072,6 @@ int select_table(char *buffer, char *use_database){
     }
 
     else{
-        for(int tes=0;tes<i;tes++){
-            printf("%d %s\n",tes,input[tes]);
-        }
         kasus = 2;
         while(kasus <= i && strcmp(input[kasus++],"FROM")){
             
@@ -1160,12 +1157,21 @@ int select_table(char *buffer, char *use_database){
 
     if(filein){
         // printf("iniw %d\n",w);
+        char init[100] = {0},confirm[1024]={0};
+        strcpy(init,"mulai");
+        send(*new_socket , init , strlen(init) , 0 );
+        int valread = recv( *new_socket , confirm, 1024, 0);
         while(fgets(ambil,1000,filein)){
             if(all == -1){
                 // printf("all\n");
                 if(w == -1){
                     //kirim
-                    printf("%s\n",ambil);
+                    char text[1000] = {0},buffer2[1000] = {0};
+                    strcpy(text,ambil);
+                    send(*new_socket , text , strlen(text) , 0 );
+                    // printf("kirim %s\n",text);
+                    valread = recv( *new_socket , buffer2, 1024, 0);
+                    // printf("%s\n",ambil);
                 }
                 else{
                     // printf("else\n");
@@ -1179,7 +1185,12 @@ int select_table(char *buffer, char *use_database){
                         if(j == w){
                             // printf("%s %s %d\n",cmpwhere,token,w);
                             if(!strcmp(cmpwhere,token)){
-                                printf("%s\n",hade);
+                                //kirim
+                                char text[1000] = {0}, buffer2[1000] = {0};
+                                strcpy(text,hade);
+                                send(*new_socket , text , strlen(text) , 0 );
+                                valread = recv( *new_socket , buffer2, 1024, 0);
+                                // printf("%s\n",hade);
                                 break;
                             }
                         }
@@ -1207,9 +1218,22 @@ int select_table(char *buffer, char *use_database){
                         j++;
                     }
                 }
-                printf("%s\n",jadi);
+                //kirim
+                char text[1000] = {0}, buffer2[1000] = {0};
+                jadi[strlen(jadi)-1]='\0';
+                strcpy(text,jadi);
+                send(*new_socket , text , strlen(text) , 0 );               
+                valread = recv( *new_socket , buffer2, 1024, 0);
+                // printf("%s\n",jadi);
             }
         }
+        // printf("print DONE!!!!\n");
+        char text[1000] = {0}, buffer2[1024] = {0};
+        strcpy(text, "DONE!!!");
+        send(*new_socket , text , strlen(text) , 0 );
+        valread = recv( *new_socket , buffer2, 1024, 0);
+        // return 1;
+
     }
     else{
         // printf("INI\n");
@@ -1477,7 +1501,7 @@ void *play(void *arg){
                     break;
             }
         }else if(!strncmp(buffer,"SELECT",6)){
-            int status = select_table(buffer,use_database);
+            int status = select_table(buffer,use_database,new_socket);
             switch(status){
                 case -1:
                     strcpy(message,"no database used");
@@ -1549,7 +1573,7 @@ int main(int argc, char const *argv[]) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    // make_daemon();
+    make_daemon();
     int ctr = 0;
     while(1){
         if ((new_socket[ctr] = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
