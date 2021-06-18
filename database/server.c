@@ -17,9 +17,9 @@
 
 pthread_t tid[MAX_CLIENTS];
 
-char *project_path = "/home/ryan/Desktop/fp-sisop-E02-2021/database";
-char *user_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
-char *permission_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
+char *project_path = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database";
+char *user_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
+char *permission_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
 
 void make_daemon(){
     pid_t child, childSID;
