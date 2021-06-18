@@ -16,9 +16,9 @@
 
 pthread_t tid[MAX_CLIENTS];
 
-char *project_path = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database";
-char *user_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
-char *permission_table = "/home/moon/Documents/sisop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
+char *project_path = "/home/ryan/Desktop/fp-sisop-E02-2021/database";
+char *user_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/user.txt";
+char *permission_table = "/home/ryan/Desktop/fp-sisop-E02-2021/database/databases/administrator/permission.txt";
 
 
 bool checkClose(int valread, int *new_socket){
@@ -906,16 +906,25 @@ void *play(void *arg){
     if(!strcmp(tipe,"root")){
         printf("ini root\n");
         strcpy(login_user,"root");
+        char status_login[1000] = {0};
+        strcpy(status_login,"authentication success");
+        send(*new_socket , status_login , strlen(status_login) , 0 );
     }
     else{
         //cek login
         printf("%s\n",tipe);
         int masuk = login(tipe,login_user);
+        char status_login[1000] = {0};
+        
         if(masuk == 0){
+            strcpy(status_login,"authentication failed");
+            send(*new_socket , status_login , strlen(status_login) , 0 );
             printf("login gagal\n");
             close(*new_socket);
             return;
         }
+        strcpy(status_login,"authentication success");
+        send(*new_socket , status_login , strlen(status_login) , 0 );
 
         printf("berhasil login%s\n",login_user);
     }
