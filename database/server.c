@@ -1281,7 +1281,7 @@ int main(int argc, char const *argv[]) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    // make_daemon();
+    make_daemon();
     int ctr = 0;
     while(1){
         if ((new_socket[ctr] = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
